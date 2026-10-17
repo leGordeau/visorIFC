@@ -63,6 +63,30 @@ Compilar sin errores no había validado este flujo en ejecución.
 
 ## Fase 3 — GIS sincronizado y Cesium
 
+### Navegación del slice IFC — 2026-10-17
+
+Antes de avanzar a GIS, se ha completado la navegación del renderer BIM:
+rotación orbital, paneo, zoom y recuperación del encuadre. El enlace de eventos
+del canvas está aislado en `packages/adapters-ifclite/src/navigation.ts` y usa
+la cámara pública de IFClite. La UI ofrece modos Rotar/Panear y botones de zoom
+y encuadre. Los atajos solo actúan cuando el canvas tiene el foco.
+
+Criterios de aceptación de navegación:
+
+- Un arrastre izquierdo cambia la orientación sin perder el centro de órbita.
+- Botón derecho, central, Shift o modo Panear trasladan la vista.
+- Rueda y botones +/− cambian la distancia al modelo.
+- Encuadrar, F e Inicio recuperan la vista completa según el aspecto del canvas.
+- Cancelar el gesto, perder captura/foco o desmontar la vista libera la captura.
+- Los listeners se retiran al liberar el adaptador; el zoom no desplaza la página.
+
+Verificación: siete pruebas de contrato de entrada con `pnpm test`, typecheck y
+build. En el navegador integrado se ha comprobado visualmente la rotación,
+el desplazamiento y el zoom del fixture `minimal-wall.ifc`.
+Referencia: [API de cámara IFClite](https://ifclite.dev/docs/guide/quickstart/#3-add-camera-controls).
+
+### Entrega GIS
+
 Estado: siguiente.
 
 1. Añadir adaptador OpenLayers con CRS y transformación reversible al marco local.

@@ -3,6 +3,8 @@ import { IfcParser, type IfcDataStore } from "@ifc-lite/parser";
 import { Renderer } from "@ifc-lite/renderer";
 import initWasm from "@ifc-lite/wasm";
 import wasmUrl from "@ifc-lite/wasm/ifc-lite_bg.wasm?url";
+import { bindNavigation, type NavigationMode } from "./navigation";
+export type { NavigationMode } from "./navigation";
 
 let wasmInitialization: Promise<unknown> | undefined;
 
@@ -30,6 +32,16 @@ export class IfcliteViewerAdapter {
   private disposed = false;
   private ready = false;
   private resizeObserver?: ResizeObserver;
+  private unbindNavigation?: () => void;
+  private navigationMode: NavigationMode = "orbit";
+
+  setNavigationMode(mode: NavigationMode): void {
+    this.navigationMode = mode;
+  }
+
+  zoom(delta: number): void {
+    if (this.ready) this.renderer?.getCamera().zoom(delta, false);
+  }
 
   async init(canvas: HTMLCanvasElement): Promise<void> {
     const renderer = new Renderer(canvas);
@@ -55,6 +67,9 @@ export class IfcliteViewerAdapter {
       if (rect.width && rect.height) renderer.resize(rect.width, rect.height);
     });
     this.resizeObserver.observe(canvas);
+    this.unbindNavigation = bindNavigation(
+      canvas, renderer.getCamera(), () => this.navigationMode, () => this.fitToView(),
+    );
     this.renderFrame();
   }
 
@@ -91,6 +106,13 @@ export class IfcliteViewerAdapter {
     }
 
     if (!meshes) throw new Error("El IFC no contiene geometría representable");
+    this.fitToView();
+    onProgress?.({ phase: "complete", percent: 100, meshes });
+    return store;
+  }
+
+  fitToView(): void {
+    if (!this.ready || !this.renderer) return;
     this.renderer.fitToView();
     const bounds = this.renderer.getModelBounds();
     if (bounds) {
@@ -115,14 +137,13 @@ export class IfcliteViewerAdapter {
         );
       }
     }
-    onProgress?.({ phase: "complete", percent: 100, meshes });
-    return store;
   }
 
   dispose(): void {
     this.disposed = true;
     this.ready = false;
     this.resizeObserver?.disconnect();
+    this.unbindNavigation?.();
     if (this.animationFrame !== undefined) {
       cancelAnimationFrame(this.animationFrame);
       this.animationFrame = undefined;

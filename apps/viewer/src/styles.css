@@ -26,6 +26,14 @@ h1 { margin-bottom: 0; font-size: clamp(24px, 4vw, 42px); }
 .bim-viewport canvas { position: absolute; inset: 0; min-height: 0; }
 .bim-viewport > span { position: absolute; bottom: 12px; left: 12px; pointer-events: none; }
 .button:has(input:disabled) { opacity: .5; cursor: wait; }
+.button:disabled { opacity: .5; cursor: default; }
+.navigation-toolbar { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+.navigation-toolbar .button { padding: 6px 8px; background: #192632ed; }
+.navigation-toolbar .button[aria-pressed="true"] { border-color: #75b8ff; background: #19538a; }
+.bim-viewport canvas { touch-action: none; cursor: grab; }
+.bim-viewport canvas[data-navigation="pan"] { cursor: move; }
+.bim-viewport canvas[data-dragging] { cursor: grabbing; }
+.bim-viewport canvas:focus-visible { outline: 2px solid #75b8ff; outline-offset: -3px; }
 .viewport strong { color: #b6c9dc; }
 .viewport span { font-size: 13px; }
 .view-grid .viewport:first-child { grid-row: 1 / 3; }

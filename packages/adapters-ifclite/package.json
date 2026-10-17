@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "build": "tsc",
     "typecheck": "tsc"
   },

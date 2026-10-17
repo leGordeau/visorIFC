@@ -12,7 +12,7 @@ import {
   downloadJson,
   sourceReferenceFromFile,
 } from "@ifc-viewer/infrastructure-browser";
-import { IfcliteViewerAdapter } from "@ifc-viewer/adapters-ifclite";
+import { IfcliteViewerAdapter, type NavigationMode } from "@ifc-viewer/adapters-ifclite";
 import "./styles.css";
 
 function App() {
@@ -24,6 +24,7 @@ function App() {
   const [status, setStatus] = useState("Ready for a local file");
   const [viewerReady, setViewerReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [navigationMode, setNavigationMode] = useState<NavigationMode>("orbit");
   const ifcCanvasRef = useRef<HTMLCanvasElement>(null);
   const ifcViewerRef = useRef<IfcliteViewerAdapter | undefined>(undefined);
 
@@ -58,6 +59,10 @@ function App() {
       ifcViewerRef.current = undefined;
     };
   }, [capabilities?.webgpu]);
+
+  useEffect(() => {
+    ifcViewerRef.current?.setNavigationMode(navigationMode);
+  }, [navigationMode, viewerReady]);
 
   const sourceSummary = useMemo(() => {
     if (!workspace.sources.length) return "No sources loaded";
@@ -128,7 +133,25 @@ function App() {
       <section className="workspace" aria-label="Viewer workspace">
         <div className="view-grid">
           <div className="viewport bim-viewport">
-            {capabilities?.webgpu ? <canvas ref={ifcCanvasRef} /> : null}
+            {capabilities?.webgpu ? <canvas
+              ref={ifcCanvasRef}
+              tabIndex={0}
+              aria-label="Visor 3D del modelo IFC"
+              aria-describedby="navigation-help"
+              data-navigation={navigationMode}
+            /> : null}
+            <div className="navigation-toolbar" role="toolbar" aria-label="Navegación 3D">
+              <button className="button" disabled={!viewerReady} aria-pressed={navigationMode === "orbit"}
+                onClick={() => setNavigationMode("orbit")} title="Rotar arrastrando con el botón izquierdo">Rotar</button>
+              <button className="button" disabled={!viewerReady} aria-pressed={navigationMode === "pan"}
+                onClick={() => setNavigationMode("pan")} title="Desplazar arrastrando; también Shift o botón derecho">Panear</button>
+              <button className="button" disabled={!viewerReady} aria-label="Acercar modelo"
+                onClick={() => ifcViewerRef.current?.zoom(-120)}>+</button>
+              <button className="button" disabled={!viewerReady} aria-label="Alejar modelo"
+                onClick={() => ifcViewerRef.current?.zoom(120)}>−</button>
+              <button className="button" disabled={!viewerReady || loading} title="Encuadrar todo el modelo (F)"
+                onClick={() => ifcViewerRef.current?.fitToView()}>Encuadrar</button>
+            </div>
             {!capabilities?.webgpu ? <strong>IFClite viewport</strong> : null}
             <span>{selectedSource?.name ?? "BIM scene adapter"}</span>
           </div>
@@ -144,6 +167,10 @@ function App() {
         <aside className="panel">
           <h2>Workspace</h2>
           <p>{viewerReady ? "Visor IFC listo" : "Inicializando visor IFC"}{loading ? " · Cargando modelo…" : ""}</p>
+          <p className="muted" id="navigation-help">
+            Arrastre izquierdo: rotar. Rueda: zoom. Botón derecho, central o Shift + arrastre: panear.
+            Teclado en el visor: flechas para rotar, Shift + flechas para panear, +/− para zoom y F para encuadrar.
+          </p>
           <div className="capabilities">
             <Capability label="WebGPU" enabled={capabilities?.webgpu} />
             <Capability label="WebGL2" enabled={capabilities?.webgl} />

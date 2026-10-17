@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.8.1",
   "scripts": {
+    "test": "pnpm --filter @ifc-viewer/adapters-ifclite test",
     "build": "pnpm -r build",
     "dev": "pnpm --filter @ifc-viewer/app dev",
     "typecheck": "pnpm -r typecheck"
