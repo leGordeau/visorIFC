@@ -1,0 +1,27 @@
+{
+  "name": "@ifc-viewer/adapters-ifclite",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@ifc-lite/geometry": "^7.8.1",
+    "@ifc-lite/parser": "^9.5.1",
+    "@ifc-lite/query": "^2.5.2",
+    "@ifc-lite/renderer": "^6.4.0",
+    "@ifc-viewer/application": "workspace:*",
+    "@ifc-viewer/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

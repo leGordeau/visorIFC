@@ -1,0 +1,10 @@
+{
+  "name": "@ifc-viewer/application",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "scripts": { "build": "tsc", "typecheck": "tsc" },
+  "dependencies": { "@ifc-viewer/domain": "workspace:*" },
+  "devDependencies": { "typescript": "^5.8.3" }
+}

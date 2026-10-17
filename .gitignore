@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+artifacts/
+dist/
+*.pcache/
+*.blend1
+point_cloud_master/native/
+node_modules/
+.vite/
+coverage/
+.pnpm-store/
+*.tsbuildinfo
