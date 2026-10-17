@@ -24,10 +24,34 @@ h1 { margin-bottom: 0; font-size: clamp(24px, 4vw, 42px); }
 .viewport canvas { width: 100%; height: 100%; min-height: 280px; display: block; border-radius: 14px; }
 .bim-viewport { position: relative; overflow: hidden; min-height: 460px; }
 .bim-viewport canvas { position: absolute; inset: 0; min-height: 0; }
+.single-viewer { min-width: 0; }
+.scene-tabs { position: absolute; z-index: 12; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; padding: 4px; border: 1px solid #31485b; border-radius: 11px; background: #101a24eF; }
+.scene-tabs .button { white-space: nowrap; }
+.scene-tabs [aria-selected="true"] { border-color: #75b8ff; background: #19538a; }
+.scene-canvas { position: absolute; inset: 0; overflow: hidden; }
+.scene-canvas[hidden] { display: none !important; }
+.scene-canvas > canvas { width: 100%; height: 100%; }
+.scene-canvas > span { position: absolute; z-index: 4; bottom: 12px; left: 12px; padding: 5px 8px; border-radius: 6px; color: #d4e0eb; background: #101a24d9; pointer-events: none; }
+.gis-canvas .ol-viewport { width: 100%; height: 100%; }
+.gis-canvas .ol-control button { color: #edf6ff; background: #192632ed; }
+.gis-canvas .ol-scale-line { bottom: 40px; left: 12px; background: #101a24c9; }
+.gis-canvas .ol-scale-line-inner { border-color: #d9e8f7; color: #d9e8f7; }
+.map-hint, .coordinate-readout { position: absolute; z-index: 10; top: 62px; left: 12px; padding: 8px 10px; border: 1px solid #385168; border-radius: 7px; color: #d9e8f7; background: #101a24ed; font-size: 12px; pointer-events: none; }
+.coordinate-readout { top: auto; right: 12px; bottom: 12px; left: auto; font-variant-numeric: tabular-nums; }
+.map-toolbar { position: absolute; z-index: 11; right: 12px; bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.map-toolbar .button, .map-base-toggle { color: #d9e8f7; background: #101a24ed; border: 1px solid #385168; border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.map-base-toggle { display: flex; align-items: center; gap: 6px; }
+.cesium-placeholder { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; color: #b6c9dc; background: radial-gradient(ellipse at center, #1d3548, #10151d 68%); text-align: center; padding: 30px; }
+.cesium-placeholder strong { font-size: 24px; }
+.cesium-placeholder span { max-width: 400px; line-height: 1.5; }
+.layer-panel { display: flex; flex-direction: column; gap: 10px; }
+.layer-toggle { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 8px; border: 1px solid #283847; border-radius: 8px; color: #c6d4e1; font-size: 13px; cursor: pointer; }
+.layer-toggle:has(input:checked) { border-color: #3d739e; background: #172b3b; }
+.layer-toggle input { accent-color: #43a1e9; }
 .bim-viewport > span { position: absolute; bottom: 12px; left: 12px; pointer-events: none; }
 .button:has(input:disabled) { opacity: .5; cursor: wait; }
 .button:disabled { opacity: .5; cursor: default; }
-.navigation-toolbar { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+.navigation-toolbar { position: absolute; top: 58px; left: 10px; right: 10px; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px; }
 .navigation-toolbar .button { padding: 6px 8px; background: #192632ed; }
 .navigation-toolbar .button[aria-pressed="true"] { border-color: #75b8ff; background: #19538a; }
 .bim-viewport canvas { touch-action: none; cursor: grab; }
@@ -58,4 +82,9 @@ h1 { margin-bottom: 0; font-size: clamp(24px, 4vw, 42px); }
   .view-grid { grid-template-columns: 1fr; grid-template-rows: repeat(3, minmax(160px, auto)); }
   .view-grid .viewport:first-child { grid-row: auto; }
   .summary { flex-direction: column; }
+  .bim-viewport { min-height: 55vh; }
+  .scene-tabs { left: 8px; transform: none; }
+  .scene-tabs .button { padding: 7px 8px; font-size: 11px; }
+  .navigation-toolbar { top: 56px; }
+  .map-toolbar { left: 12px; justify-content: end; }
 }

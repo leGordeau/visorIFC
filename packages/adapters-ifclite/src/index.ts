@@ -4,6 +4,7 @@ import { Renderer } from "@ifc-lite/renderer";
 import initWasm from "@ifc-lite/wasm";
 import wasmUrl from "@ifc-lite/wasm/ifc-lite_bg.wasm?url";
 import { bindNavigation, type NavigationMode } from "./navigation";
+import type { LocalPlanExtent } from "@ifc-viewer/domain";
 export type { NavigationMode } from "./navigation";
 
 let wasmInitialization: Promise<unknown> | undefined;
@@ -41,6 +42,22 @@ export class IfcliteViewerAdapter {
 
   zoom(delta: number): void {
     if (this.ready) this.renderer?.getCamera().zoom(delta, false);
+  }
+
+  getPlanExtent(): LocalPlanExtent | undefined {
+    const bounds = this.renderer?.getModelBounds();
+    if (!bounds) return undefined;
+    return {
+      minX: bounds.min.x,
+      maxX: bounds.max.x,
+      minZ: bounds.min.z,
+      maxZ: bounds.max.z,
+      origin: {
+        x: (bounds.min.x + bounds.max.x) / 2,
+        y: (bounds.min.y + bounds.max.y) / 2,
+        z: (bounds.min.z + bounds.max.z) / 2,
+      },
+    };
   }
 
   async init(canvas: HTMLCanvasElement): Promise<void> {

@@ -9,6 +9,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@ifc-viewer/adapters-gis-openlayers": "workspace:*",
     "@ifc-viewer/adapters-ifclite": "workspace:*",
     "@ifc-viewer/domain": "workspace:*",
     "@ifc-viewer/infrastructure-browser": "workspace:*",

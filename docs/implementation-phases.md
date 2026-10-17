@@ -87,13 +87,19 @@ Referencia: [API de cámara IFClite](https://ifclite.dev/docs/guide/quickstart/#
 
 ### Entrega GIS
 
-Estado: siguiente.
+Estado: slice GIS inicial implementado; integración de Cesium y sincronización completa pendientes.
 
-1. Añadir adaptador OpenLayers con CRS y transformación reversible al marco local.
-2. Añadir adaptador Cesium para globo, terreno, imagery y 3D Tiles sin mezclarlo
-   con el renderer BIM.
-3. Introducir un `SceneSelectionStore` común para selección, cámara y coordenadas.
-4. Añadir pruebas de contrato para sincronización 2D/3D.
+1. Adaptador OpenLayers con registro manual de origen, marco local de planta X/-Z,
+   huella IFC, retícula, escala, coordenadas del cursor y encuadre GIS.
+2. Una única ventana gráfica con modos IFC/GIS/Cesium y controles de visibilidad
+   de capas. Los motores mantienen canvases y estado independientes.
+3. Fondo OpenStreetMap opcional y carga diferida, con aviso de las peticiones
+   externas de teselas.
+4. Cesium real (globo, terreno, imagery y 3D Tiles), `SceneSelectionStore` común
+   y contratos de sincronización 2D/3D siguen siendo trabajo futuro.
+
+Límite conocido: el registro manual coloca el centro local del IFC en un punto
+geográfico elegido por la persona usuaria; no deduce ni valida el CRS del IFC.
 
 ## Fase 4 — Nubes de puntos
 

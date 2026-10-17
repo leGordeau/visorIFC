@@ -6,6 +6,24 @@ export type CoordinateFrame = {
   unit: "metre";
 };
 
+export type GisRegistration = {
+  method: "manual-local-center";
+  crs: "EPSG:4326";
+  longitude: number;
+  latitude: number;
+  localOriginYUpMetres: { x: number; y: number; z: number };
+  horizontalAxes: { easting: "x"; northing: "-z" };
+};
+
+/** Horizontal IFC bounds in IFClite render Y-up metres (plan uses X and Z). */
+export type LocalPlanExtent = {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  origin: { x: number; y: number; z: number };
+};
+
 export type CapabilityProfile = {
   webgpu: boolean;
   webgl: boolean;
@@ -28,6 +46,7 @@ export type Workspace = {
   name: string;
   sources: SourceReference[];
   coordinateFrame?: CoordinateFrame;
+  gisRegistration?: GisRegistration;
   capabilities?: CapabilityProfile;
 };
 

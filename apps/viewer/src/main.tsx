@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import {
   createWorkspace,
   type CapabilityProfile,
+  type GisRegistration,
+  type LocalPlanExtent,
   type SourceReference,
   type Workspace,
 } from "@ifc-viewer/domain";
@@ -13,6 +15,7 @@ import {
   sourceReferenceFromFile,
 } from "@ifc-viewer/infrastructure-browser";
 import { IfcliteViewerAdapter, type NavigationMode } from "@ifc-viewer/adapters-ifclite";
+import { OpenLayersGisAdapter, type GisCursorPosition } from "@ifc-viewer/adapters-gis-openlayers";
 import "./styles.css";
 
 function App() {
@@ -25,8 +28,51 @@ function App() {
   const [viewerReady, setViewerReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [navigationMode, setNavigationMode] = useState<NavigationMode>("orbit");
+  const [activeView, setActiveView] = useState<"ifc" | "gis" | "cesium">("ifc");
+  const [ifcVisible, setIfcVisible] = useState(true);
+  const [gisVisible, setGisVisible] = useState(false);
+  const [cesiumVisible, setCesiumVisible] = useState(false);
+  const [osmEnabled, setOsmEnabled] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState<GisCursorPosition>();
+  const [gisRegistration, setGisRegistration] = useState<GisRegistration>();
+  const [ifcExtent, setIfcExtent] = useState<LocalPlanExtent>();
   const ifcCanvasRef = useRef<HTMLCanvasElement>(null);
+  const gisTargetRef = useRef<HTMLDivElement>(null);
   const ifcViewerRef = useRef<IfcliteViewerAdapter | undefined>(undefined);
+  const gisViewerRef = useRef<OpenLayersGisAdapter | undefined>(undefined);
+
+  useEffect(() => {
+    if (!gisTargetRef.current) return;
+    const map = new OpenLayersGisAdapter(
+      gisTargetRef.current,
+      (registration) => {
+        setGisRegistration(registration);
+        setWorkspace((current) => ({ ...current, gisRegistration: registration }));
+      },
+      setCursorPosition,
+    );
+    gisViewerRef.current = map;
+    return () => {
+      map.dispose();
+      gisViewerRef.current = undefined;
+    };
+  }, []);
+
+  useEffect(() => {
+    gisViewerRef.current?.setFootprint(ifcExtent);
+  }, [ifcExtent]);
+
+  useEffect(() => {
+    gisViewerRef.current?.setIfcVisible(ifcVisible);
+  }, [ifcVisible]);
+
+  useEffect(() => {
+    gisViewerRef.current?.setVisible(activeView === "gis");
+  }, [activeView]);
+
+  useEffect(() => {
+    gisViewerRef.current?.setBaseMapEnabled(osmEnabled);
+  }, [osmEnabled]);
 
   useEffect(() => {
     void detectCapabilities().then((detected) => {
@@ -85,7 +131,19 @@ function App() {
           const suffix = progress.meshes ? ` · ${progress.meshes} meshes` : "";
           setStatus(`${progress.phase} ${Math.round(progress.percent)}%${suffix}`);
         })
-        .then(() => setStatus(`${file.name} loaded with IFClite`))
+        .then(() => {
+          const extent = ifcViewerRef.current?.getPlanExtent();
+          setIfcExtent(extent);
+          if (extent && gisRegistration) {
+            const registration = {
+              ...gisRegistration,
+              localOriginYUpMetres: extent.origin,
+            };
+            setGisRegistration(registration);
+            setWorkspace((current) => ({ ...current, gisRegistration: registration }));
+          }
+          setStatus(`${file.name} loaded with IFClite`);
+        })
         .catch((error: unknown) => setStatus(`IFClite error: ${String(error)}`))
         .finally(() => setLoading(false));
     } else {
@@ -98,6 +156,24 @@ function App() {
   function exportWorkspace() {
     downloadJson(`${workspace.name.replace(/\s+/g, "-").toLowerCase()}.pcv.json`, workspace);
     setStatus("Workspace manifest downloaded");
+  }
+
+  function toggleIfcLayer(visible: boolean) {
+    setIfcVisible(visible);
+    if (visible) setActiveView("ifc");
+    else if (activeView === "ifc") setActiveView(gisVisible ? "gis" : cesiumVisible ? "cesium" : "ifc");
+  }
+
+  function toggleGisLayer(visible: boolean) {
+    setGisVisible(visible);
+    if (visible) setActiveView("gis");
+    else if (activeView === "gis") setActiveView(ifcVisible ? "ifc" : cesiumVisible ? "cesium" : "gis");
+  }
+
+  function toggleCesiumLayer(visible: boolean) {
+    setCesiumVisible(visible);
+    if (visible) setActiveView("cesium");
+    else if (activeView === "cesium") setActiveView(ifcVisible ? "ifc" : gisVisible ? "gis" : "cesium");
   }
 
   return (
@@ -130,41 +206,61 @@ function App() {
         <span>{status}</span>
         <span>{sourceSummary}</span>
       </section>
-      <section className="workspace" aria-label="Viewer workspace">
-        <div className="view-grid">
-          <div className="viewport bim-viewport">
-            {capabilities?.webgpu ? <canvas
-              ref={ifcCanvasRef}
-              tabIndex={0}
-              aria-label="Visor 3D del modelo IFC"
-              aria-describedby="navigation-help"
-              data-navigation={navigationMode}
-            /> : null}
-            <div className="navigation-toolbar" role="toolbar" aria-label="Navegación 3D">
+      <section className="workspace unified-workspace" aria-label="Viewer workspace">
+        <div className="single-viewer">
+          <div className="viewport bim-viewport" data-view={activeView}>
+            <div className="scene-tabs" role="tablist" aria-label="Vista de la escena">
+              <button className="button" role="tab" aria-selected={activeView === "ifc"} disabled={!ifcVisible} onClick={() => setActiveView("ifc")}>IFC 3D</button>
+              <button className="button" role="tab" aria-selected={activeView === "gis"} disabled={!gisVisible} onClick={() => setActiveView("gis")}>GIS 2D</button>
+              <button className="button" role="tab" aria-selected={activeView === "cesium"} onClick={() => setActiveView("cesium")}
+                disabled={!cesiumVisible} title="Activa la capa Cesium para abrir su vista">Cesium 3D</button>
+            </div>
+            <div className="scene-canvas" hidden={activeView !== "ifc" || !ifcVisible}>
+              {capabilities?.webgpu ? <canvas
+                ref={ifcCanvasRef} tabIndex={0} aria-label="Visor 3D del modelo IFC"
+                aria-describedby="navigation-help" data-navigation={navigationMode}
+              /> : <strong>IFClite requiere WebGPU en este navegador</strong>}
+              <span>{selectedSource?.name ?? "Sin IFC cargado"}</span>
+            </div>
+            <div className="scene-canvas gis-canvas" ref={gisTargetRef} hidden={activeView !== "gis"} aria-label="Mapa GIS">
+              {gisVisible && !gisRegistration ? <div className="map-hint">Haz clic en el mapa para situar el centro del IFC.</div> : null}
+              {gisRegistration ? <div className="map-hint">Origen registrado · EPSG:4326 · {gisRegistration.longitude.toFixed(5)}, {gisRegistration.latitude.toFixed(5)}</div> : null}
+              {cursorPosition ? <div className="coordinate-readout">{cursorPosition.latitude.toFixed(6)}°, {cursorPosition.longitude.toFixed(6)}°</div> : null}
+            </div>
+            <div className="scene-canvas cesium-placeholder" hidden={activeView !== "cesium"}>
+              <strong>Cesium 3D</strong>
+              <span>La capa está preparada en el panel; la integración del globo llegará en la siguiente fase.</span>
+            </div>
+            {!ifcVisible && !gisVisible && !cesiumVisible ? <div className="scene-canvas cesium-placeholder"><strong>Sin capas activas</strong><span>Activa IFC, GIS o Cesium en el panel para mostrar una escena.</span></div> : null}
+            {activeView === "ifc" && ifcVisible ? <div className="navigation-toolbar" role="toolbar" aria-label="Navegación 3D">
               <button className="button" disabled={!viewerReady} aria-pressed={navigationMode === "orbit"}
-                onClick={() => setNavigationMode("orbit")} title="Rotar arrastrando con el botón izquierdo">Rotar</button>
+                onClick={() => setNavigationMode("orbit")}>Rotar</button>
               <button className="button" disabled={!viewerReady} aria-pressed={navigationMode === "pan"}
-                onClick={() => setNavigationMode("pan")} title="Desplazar arrastrando; también Shift o botón derecho">Panear</button>
+                onClick={() => setNavigationMode("pan")}>Panear</button>
               <button className="button" disabled={!viewerReady} aria-label="Acercar modelo"
                 onClick={() => ifcViewerRef.current?.zoom(-120)}>+</button>
               <button className="button" disabled={!viewerReady} aria-label="Alejar modelo"
                 onClick={() => ifcViewerRef.current?.zoom(120)}>−</button>
-              <button className="button" disabled={!viewerReady || loading} title="Encuadrar todo el modelo (F)"
+              <button className="button" disabled={!viewerReady || loading}
                 onClick={() => ifcViewerRef.current?.fitToView()}>Encuadrar</button>
-            </div>
-            {!capabilities?.webgpu ? <strong>IFClite viewport</strong> : null}
-            <span>{selectedSource?.name ?? "BIM scene adapter"}</span>
-          </div>
-          <div className="viewport placeholder compact">
-            <strong>Cesium geospatial 3D</strong>
-            <span>Terrain / 3D Tiles adapter</span>
-          </div>
-          <div className="viewport placeholder compact">
-            <strong>OpenLayers GIS</strong>
-            <span>2D map adapter</span>
+            </div> : null}
+            {activeView === "gis" ? <div className="map-toolbar">
+              <button className="button" disabled={!gisRegistration || !ifcExtent}
+                onClick={() => gisViewerRef.current?.fitModel()}>Encuadrar huella IFC</button>
+              <label className="map-base-toggle" title="Al activarlo, OpenStreetMap recibe peticiones de teselas para la zona visible.">
+                <input type="checkbox" checked={osmEnabled} onChange={(event) => setOsmEnabled(event.target.checked)} />
+                Fondo OpenStreetMap
+              </label>
+            </div> : null}
           </div>
         </div>
-        <aside className="panel">
+        <aside className="panel layer-panel">
+          <h2>Capas</h2>
+          <p>{activeView === "ifc" ? "Escena de modelo" : activeView === "gis" ? "Escena geográfica" : "Escena Cesium"}</p>
+          <label className="layer-toggle"><input type="checkbox" checked={ifcVisible} onChange={(event) => toggleIfcLayer(event.target.checked)} /> IFC · modelo y huella</label>
+          <label className="layer-toggle"><input type="checkbox" checked={gisVisible} onChange={(event) => toggleGisLayer(event.target.checked)} /> GIS · mapa y registro</label>
+          <label className="layer-toggle"><input type="checkbox" checked={cesiumVisible} onChange={(event) => toggleCesiumLayer(event.target.checked)} /> Cesium · globo 3D</label>
+          <p className="muted">Activa una o varias capas; el selector superior elige cuál ocupa esta única ventana gráfica.</p>
           <h2>Workspace</h2>
           <p>{viewerReady ? "Visor IFC listo" : "Inicializando visor IFC"}{loading ? " · Cargando modelo…" : ""}</p>
           <p className="muted" id="navigation-help">
