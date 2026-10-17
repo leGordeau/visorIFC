@@ -22,6 +22,8 @@ function App() {
   const [capabilities, setCapabilities] = useState<CapabilityProfile>();
   const [selectedSource, setSelectedSource] = useState<SourceReference>();
   const [status, setStatus] = useState("Ready for a local file");
+  const [viewerReady, setViewerReady] = useState(false);
+  const [loading, setLoading] = useState(false);
   const ifcCanvasRef = useRef<HTMLCanvasElement>(null);
   const ifcViewerRef = useRef<IfcliteViewerAdapter | undefined>(undefined);
 
@@ -35,12 +37,23 @@ function App() {
   useEffect(() => {
     if (!capabilities?.webgpu || !ifcCanvasRef.current) return;
     const viewer = new IfcliteViewerAdapter();
-    ifcViewerRef.current = viewer;
-    void viewer.init(ifcCanvasRef.current).catch((error: unknown) => {
-      setStatus(`IFClite no pudo inicializar WebGPU: ${String(error)}`);
-      ifcViewerRef.current = undefined;
-    });
+    let active = true;
+    setViewerReady(false);
+    setStatus("Inicializando visor 3D…");
+    void viewer.init(ifcCanvasRef.current)
+      .then(() => {
+        if (!active) return;
+        ifcViewerRef.current = viewer;
+        setViewerReady(true);
+        setStatus("Visor 3D listo. Selecciona un IFC local.");
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        viewer.dispose();
+        setStatus(`Error al inicializar IFClite: ${String(error)}`);
+      });
     return () => {
+      active = false;
       viewer.dispose();
       ifcViewerRef.current = undefined;
     };
@@ -60,6 +73,7 @@ function App() {
       sources: [...current.sources, source],
     }));
     if (source.kind === "ifc" && ifcViewerRef.current) {
+      setLoading(true);
       setStatus(`Parsing ${file.name} with IFClite...`);
       void ifcViewerRef.current
         .load(file, (progress) => {
@@ -67,9 +81,12 @@ function App() {
           setStatus(`${progress.phase} ${Math.round(progress.percent)}%${suffix}`);
         })
         .then(() => setStatus(`${file.name} loaded with IFClite`))
-        .catch((error: unknown) => setStatus(`IFClite error: ${String(error)}`));
+        .catch((error: unknown) => setStatus(`IFClite error: ${String(error)}`))
+        .finally(() => setLoading(false));
     } else {
-      setStatus(`${file.name} staged for the IFC/point-cloud adapter`);
+      setStatus(source.kind === "ifc"
+        ? "El visor 3D no está listo. Revisa el error de inicialización."
+        : `${file.name}: importación de nubes de puntos pendiente de implementar`);
     }
   }
 
@@ -90,8 +107,13 @@ function App() {
             Open local file
             <input
               type="file"
+              aria-label="Open local file"
+              disabled={!viewerReady || loading}
               accept=".ifc,.e57,.las,.laz,.copc,.copc.laz"
-              onChange={(event) => onFileSelected(event.target.files?.[0])}
+              onChange={(event) => {
+                onFileSelected(event.target.files?.[0]);
+                event.target.value = "";
+              }}
             />
           </label>
           <button className="button" type="button" onClick={exportWorkspace}>
@@ -105,7 +127,7 @@ function App() {
       </section>
       <section className="workspace" aria-label="Viewer workspace">
         <div className="view-grid">
-          <div className="viewport placeholder">
+          <div className="viewport bim-viewport">
             {capabilities?.webgpu ? <canvas ref={ifcCanvasRef} /> : null}
             {!capabilities?.webgpu ? <strong>IFClite viewport</strong> : null}
             <span>{selectedSource?.name ?? "BIM scene adapter"}</span>
@@ -121,7 +143,7 @@ function App() {
         </div>
         <aside className="panel">
           <h2>Workspace</h2>
-          <p>Fase 1: shell, capacidades y manifiesto local.</p>
+          <p>{viewerReady ? "Visor IFC listo" : "Inicializando visor IFC"}{loading ? " · Cargando modelo…" : ""}</p>
           <div className="capabilities">
             <Capability label="WebGPU" enabled={capabilities?.webgpu} />
             <Capability label="WebGL2" enabled={capabilities?.webgl} />

@@ -14,6 +14,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@ifc-lite/wasm": "10.4.0",
     "@ifc-lite/geometry": "^7.8.1",
     "@ifc-lite/parser": "^9.5.1",
     "@ifc-lite/query": "^2.5.2",

@@ -1,6 +1,17 @@
 import { GeometryProcessor, type StreamingGeometryEvent } from "@ifc-lite/geometry";
 import { IfcParser, type IfcDataStore } from "@ifc-lite/parser";
 import { Renderer } from "@ifc-lite/renderer";
+import initWasm from "@ifc-lite/wasm";
+import wasmUrl from "@ifc-lite/wasm/ifc-lite_bg.wasm?url";
+
+let wasmInitialization: Promise<unknown> | undefined;
+
+function initializeWasm(): Promise<unknown> {
+  return wasmInitialization ??= initWasm({ module_or_path: wasmUrl }).catch((error) => {
+    wasmInitialization = undefined;
+    throw error;
+  });
+}
 
 export const ifcEngineAdapter = { name: "ifclite" } as const;
 
@@ -16,15 +27,34 @@ export class IfcliteViewerAdapter {
   private geometry?: GeometryProcessor;
   private animationFrame?: number;
   private geometryEstimate = 0;
+  private disposed = false;
+  private ready = false;
+  private resizeObserver?: ResizeObserver;
 
   async init(canvas: HTMLCanvasElement): Promise<void> {
-    this.renderer = new Renderer(canvas);
-    await this.renderer.init();
+    const renderer = new Renderer(canvas);
+    this.renderer = renderer;
+    await renderer.init();
+    if (this.disposed) {
+      renderer.destroy();
+      return;
+    }
+    // Explicit asset URL avoids Vite's optimized dependency directory resolving
+    // the binary to the SPA HTML fallback during development.
+    await initializeWasm();
+    if (this.disposed) return;
     this.geometry = new GeometryProcessor({
       tessellationQuality: "medium",
       skipSmallCuts: true,
     });
     await this.geometry.init();
+    if (this.disposed) return;
+    this.ready = true;
+    this.resizeObserver = new ResizeObserver(() => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width && rect.height) renderer.resize(rect.width, rect.height);
+    });
+    this.resizeObserver.observe(canvas);
     this.renderFrame();
   }
 
@@ -33,7 +63,7 @@ export class IfcliteViewerAdapter {
     onProgress?: (progress: IfcLoadProgress) => void,
     signal?: AbortSignal,
   ): Promise<IfcDataStore> {
-    if (!this.renderer || !this.geometry) {
+    if (!this.ready || !this.renderer || !this.geometry || this.disposed) {
       throw new Error("IFClite viewer is not initialized");
     }
 
@@ -46,7 +76,7 @@ export class IfcliteViewerAdapter {
     let meshes = 0;
     for await (const event of this.geometry.processAdaptive(
       new Uint8Array(buffer),
-      { signal },
+      { signal, wasmUrls: { wasm: wasmUrl } },
     )) {
       if (event.type === "batch") {
         meshes += event.meshes.length;
@@ -60,12 +90,39 @@ export class IfcliteViewerAdapter {
       }
     }
 
+    if (!meshes) throw new Error("El IFC no contiene geometría representable");
     this.renderer.fitToView();
+    const bounds = this.renderer.getModelBounds();
+    if (bounds) {
+      const camera = this.renderer.getCamera();
+      const radius = Math.hypot(
+        bounds.max.x - bounds.min.x,
+        bounds.max.y - bounds.min.y,
+        bounds.max.z - bounds.min.z,
+      ) / 2;
+      const verticalHalfFov = camera.getFOV() / 2;
+      const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * camera.getAspect());
+      const distance = radius * 1.1 / Math.sin(Math.min(verticalHalfFov, horizontalHalfFov));
+      const target = camera.getTarget();
+      const position = camera.getPosition();
+      const length = Math.hypot(position.x - target.x, position.y - target.y, position.z - target.z);
+      if (length > 0 && Number.isFinite(distance) && distance > 0) {
+        const scale = distance / length;
+        camera.setPosition(
+          target.x + (position.x - target.x) * scale,
+          target.y + (position.y - target.y) * scale,
+          target.z + (position.z - target.z) * scale,
+        );
+      }
+    }
     onProgress?.({ phase: "complete", percent: 100, meshes });
     return store;
   }
 
   dispose(): void {
+    this.disposed = true;
+    this.ready = false;
+    this.resizeObserver?.disconnect();
     if (this.animationFrame !== undefined) {
       cancelAnimationFrame(this.animationFrame);
       this.animationFrame = undefined;

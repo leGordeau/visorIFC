@@ -41,6 +41,26 @@ Observación: el bundle inicial todavía es grande porque IFClite se importa de
 forma estática. Se resolverá en la fase de resiliencia/performance mediante
 `import()` dinámico y límites de bundle.
 
+### Corrección de carga IFC — 2026-10-17
+
+El smoke test de navegador detectó que Vite devolvía el HTML de la SPA cuando
+el glue WASM resolvía el binario desde el directorio de dependencias optimizadas.
+Compilar sin errores no había validado este flujo en ejecución.
+
+- Se importa el binario mediante `?url` y se inicializa explícitamente antes del
+  procesador. Los workers reciben la misma URL.
+- La selección de archivos espera al motor listo; los errores de inicialización
+  permanecen visibles. Un IFC sin geometría ya no se informa como carga exitosa.
+- Se observa el tamaño del canvas y se encuadra el modelo según el campo de
+  visión horizontal y vertical.
+- Regresión manual: arrancar `pnpm dev`, esperar «Visor 3D listo» y seleccionar
+  `packages/test-fixtures/minimal-wall.ifc`. Debe aparecer una pared completa y
+  el estado `loaded with IFClite`, sin errores de compilación WASM en consola.
+- Resultado: flujo anterior verificado visualmente en el navegador integrado
+  con WebGPU y sin `SharedArrayBuffer`. El IFC del usuario debe seleccionarse de
+  nuevo para validar su geometría particular. Archivos grandes y la ruta
+  multiproceso siguen pendientes de validación funcional.
+
 ## Fase 3 — GIS sincronizado y Cesium
 
 Estado: siguiente.

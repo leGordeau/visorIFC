@@ -86,6 +86,9 @@ importers:
       '@ifc-lite/renderer':
         specifier: ^6.4.0
         version: 6.4.0
+      '@ifc-lite/wasm':
+        specifier: 10.4.0
+        version: 10.4.0
       '@ifc-viewer/application':
         specifier: workspace:*
         version: link:../application
